@@ -6,4 +6,5 @@ __pycache__/
 # Ignores dataset, checkpoints and logs
 *.jpg
 *.pth
+*.png
 events.*
