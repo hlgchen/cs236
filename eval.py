@@ -8,6 +8,8 @@ import util
 from model import *
 from trainer import evaluate
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def parse_args():
     r"""
@@ -76,7 +78,7 @@ def eval(args):
         raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Loads checkpoint
-    state_dict = torch.load(args.ckpt_path)
+    state_dict = torch.load(args.ckpt_path, map_location=device)
     net_g.load_state_dict(state_dict["net_g"])
     net_d.load_state_dict(state_dict["net_d"])
 
