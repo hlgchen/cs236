@@ -103,7 +103,7 @@ def get_figure(samples,filename=None,show=True, auto_increase=True):
     ax.set_xticklabels(["Original Image"], fontsize= 20)
     ax.set_yticks([])
     if filename is not None: 
-        path = f"generated_images/{filename}"
+        path = f"generated_images/pca/{filename}"
         if auto_increase: 
             while(exists(path + '.png')): 
                 path = path + '1'

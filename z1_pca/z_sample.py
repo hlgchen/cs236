@@ -1,3 +1,9 @@
+import sys 
+import os
+p = os.path.abspath('.')
+if p not in sys.path:
+    sys.path.append(p)
+
 import torch
 import torchvision.utils as vutils
 from matplotlib import pyplot as plt
