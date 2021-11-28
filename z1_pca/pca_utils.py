@@ -3,7 +3,6 @@ import torch
 
 from os.path import exists
 from default_model import *
-import sys
 from matplotlib import pyplot as plt
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -96,6 +95,7 @@ def load_model(n=295000, res=64):
 
 def get_figure(samples,filename=None,show=True, auto_increase=True): 
     """Expects samples to have shape (3, height, width)"""
+    samples = samples.detach()
     fig, ax = plt.subplots(1,1, figsize = (20,10))
     plt.imshow(samples.permute(1, 2, 0), norm=None)
 

@@ -3,7 +3,6 @@ import torchvision.utils as vutils
 from matplotlib import pyplot as plt
 
 from default_model import *
-import sys
 import numpy as np
 import pca_utils as pu
 
