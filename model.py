@@ -16,10 +16,11 @@ class Generator32(nn.Module):
         bottom_width (int): Starting width for upsampling generator output to an image.
     """
 
-    def __init__(self, nz=128, ngf=256, bottom_width=4):
+    def __init__(self, ld, ngf=256, bottom_width=4):
         super().__init__()
-
-        self.l1 = nn.Linear(nz, (bottom_width ** 2) * ngf)
+        
+        zc = int(ld['nz'] + ld['n_dis_c'] * ld['dis_c_dim'] + ld['n_con_c'])
+        self.l1 = nn.Linear(zc, (bottom_width ** 2) * ngf)
         self.unfatten = nn.Unflatten(1, (ngf, bottom_width, bottom_width))
         self.block2 = GBlock(ngf, ngf, upsample=True)
         self.block3 = GBlock(ngf, ngf, upsample=True)
@@ -44,7 +45,7 @@ class Generator32(nn.Module):
         return y
 
 
-class Discriminator32(nn.Module):
+class DiscriminatorRaw32(nn.Module):
     r"""
     ResNet backbone discriminator for SNGAN.
     Attributes:
@@ -58,10 +59,7 @@ class Discriminator32(nn.Module):
         self.block2 = DBlock(ndf, ndf, downsample=True)
         self.block3 = DBlock(ndf, ndf, downsample=False)
         self.block4 = DBlock(ndf, ndf, downsample=False)
-        self.l5 = SNLinear(ndf, 1)
         self.activation = nn.ReLU(True)
-
-        nn.init.xavier_uniform_(self.l5.weight.data, 1.0)
 
     def forward(self, x):
         h = x
@@ -71,8 +69,7 @@ class Discriminator32(nn.Module):
         h = self.block4(h)
         h = self.activation(h)
         h = torch.sum(h, dim=(2, 3))
-        y = self.l5(h)
-        return y
+        return h
 
 
 class Generator64(nn.Module):
@@ -84,10 +81,11 @@ class Generator64(nn.Module):
         bottom_width (int): Starting width for upsampling generator output to an image.
     """
 
-    def __init__(self, nz=128, ngf=1024, bottom_width=4):
+    def __init__(self, ld, ngf=1024, bottom_width=4):
         super().__init__()
 
-        self.l1 = nn.Linear(nz, (bottom_width ** 2) * ngf)
+        zc = int(ld['nz'] + ld['n_dis_c'] * ld['dis_c_dim'] + ld['n_con_c'])
+        self.l1 = nn.Linear(zc, (bottom_width ** 2) * ngf)
         self.unfatten = nn.Unflatten(1, (ngf, bottom_width, bottom_width))
         self.block2 = GBlock(ngf, ngf >> 1, upsample=True)
         self.block3 = GBlock(ngf >> 1, ngf >> 2, upsample=True)
@@ -114,7 +112,7 @@ class Generator64(nn.Module):
         return y
 
 
-class Discriminator64(nn.Module):
+class DiscriminatorRaw64(nn.Module):
     r"""
     ResNet backbone discriminator for SNGAN.
     Attributes:
@@ -129,10 +127,8 @@ class Discriminator64(nn.Module):
         self.block3 = DBlock(ndf >> 3, ndf >> 2, downsample=True)
         self.block4 = DBlock(ndf >> 2, ndf >> 1, downsample=True)
         self.block5 = DBlock(ndf >> 1, ndf, downsample=True)
-        self.l6 = SNLinear(ndf, 1)
         self.activation = nn.ReLU(True)
 
-        nn.init.xavier_uniform_(self.l6.weight.data, 1.0)
 
     def forward(self, x):
         h = x
@@ -143,5 +139,42 @@ class Discriminator64(nn.Module):
         h = self.block5(h)
         h = self.activation(h)
         h = torch.sum(h, dim=(2, 3))
-        y = self.l6(h)
+        return h
+
+
+class Discriminator(nn.Module):
+    """ndf should be 128 for 32 model and 1024 for 64 model"""
+    def __init__(self, model=32, ndf=128): 
+        super().__init__()
+        if ndf is not None: 
+            ndf = 128 if (model == 32) else 1024
+        self.l = SNLinear(ndf, 1)
+        nn.init.xavier_uniform_(self.l.weight.data, 1.0)
+    
+    def forward(self, h): 
+        y = self.l(h)
         return y
+
+
+class QHead(nn.Module):
+    def __init__(self, ld, model=32, ndf=128): 
+        super().__init__()
+        if ndf is not None: 
+            ndf = 128 if (model == 32) else 1024
+        self.conv1 = DBlock(ndf, ndf, downsample = False)
+        self.bn1 = nn.BatchNorm2d(ndf)
+
+        self.conv_disc = nn.Linear(ndf, ld['n_dis_c'] * ld['dis_c_dim'])
+        self.conv_mu = nn.Linear(ndf, ld['n_con_c'])
+        self.conv_var = nn.Linear(ndf, ld['n_con_c'])
+    
+    def forward(self, x):
+        x = x.unsqueeze(-1).unsqueeze(-1)
+        x = F.leaky_relu(self.bn1(self.conv1(x)), 0.1, inplace=True).squeeze()
+
+        disc_logits = self.conv_disc(x)
+
+        mu = self.conv_mu(x)
+        var = torch.exp(self.conv_var(x))
+
+        return disc_logits, mu, var

@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument(
         "--eval_every",
         type=int,
-        default=500,
+        default=1018,
         help="Number of steps between model evaluation.",
     )
     parser.add_argument(
@@ -134,21 +134,39 @@ def train(args):
     torch.manual_seed(args.seed)
 
     # Set parameters
-    nz, lr, betas, eval_size, num_workers = (128, 2e-4, (0.0, 0.9), 1000, 4)
+    lr, betas, eval_size, num_workers = (2e-4, (0.0, 0.9), 1000, 4)
+    latent_dimensions = {
+        'nz': 128, 
+        'n_dis_c':2,
+        'dis_c_dim':5,
+        'n_con_c':5,
+    }
 
     # Configure models
     if args.im_size == 32:
-        net_g = Generator32()
-        net_d = Discriminator32()
+        net_g = Generator32(latent_dimensions)
+        net_d_raw = DiscriminatorRaw32()
+        net_dh = Discriminator(32)
+        net_q = QHead(latent_dimensions, 32)
     elif args.im_size == 64:
-        net_g = Generator64()
-        net_d = Discriminator64()
+        net_g = Generator64(latent_dimensions)
+        net_d_raw = DiscriminatorRaw64()
+        net_dh = Discriminator(64)
+        net_q = QHead(latent_dimensions, 64)
     else:
         raise NotImplementedError(f"Unsupported image size '{args.im_size}'.")
 
     # Configure optimizers
-    opt_g = optim.Adam(net_g.parameters(), lr, betas)
-    opt_d = optim.Adam(net_d.parameters(), lr, betas)
+    g_params = [
+        {'params': net_g.parameters()},
+        {'params': net_q.parameters()}
+    ]
+    d_params = [
+        {'params': net_d_raw.parameters()},
+        {'params': net_dh.parameters()}
+    ]
+    opt_g = optim.Adam(g_params, lr, betas)
+    opt_d = optim.Adam(d_params, lr, betas)
 
     # Configure schedulers
     sch_g = optim.lr_scheduler.LambdaLR(
@@ -166,14 +184,16 @@ def train(args):
     # Configure trainer
     trainer = Trainer(
         net_g,
-        net_d,
+        net_q, 
+        net_d_raw,
+        net_dh,
         opt_g,
         opt_d,
         sch_g,
         sch_d,
         train_dataloader,
         eval_dataloader,
-        nz,
+        latent_dimensions,
         log_dir,
         ckpt_dir,
         torch.device(args.device),
