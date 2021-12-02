@@ -5,9 +5,9 @@ import argparse
 import torch
 import torch.optim as optim
 
-import util
-from model import *
-from trainer import Trainer
+import code_base.utils as util
+from code_base.model import *
+from code_base.trainer import Trainer
 
 
 def parse_args():

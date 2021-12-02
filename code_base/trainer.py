@@ -133,7 +133,7 @@ def compute_loss_g(net_g, net_q, net_d_raw, net_dh, z, latent_dimensions, loss_f
     # add the losses 
     loss_g = loss_g_raw +  (cat_neg_log_prob + con_neg_log_prob)
 
-    return loss_g, fakes, fake_preds
+    return loss_g, fakes, fake_preds, cat_neg_log_prob, con_neg_log_prob
 
 
 def compute_loss_d(net_g, net_d_raw, net_dh, reals, z, loss_func_d):
@@ -192,6 +192,8 @@ def evaluate(net_g, net_q, net_d_raw, net_dh, dataloader, latent_dimensions, dev
             [],
             [],
         )
+        cat_ls = []
+        con_ls = []
 
         for data, _ in tqdm(dataloader, desc="Evaluating Model"):
 
@@ -205,7 +207,7 @@ def evaluate(net_g, net_q, net_d_raw, net_dh, dataloader, latent_dimensions, dev
                 z,
                 hinge_loss_d,
             )
-            loss_g, _, _ = compute_loss_g(
+            loss_g, _, _, cat_neg_log_prob,con_neg_log_prob = compute_loss_g(
                 net_g,
                 net_q,
                 net_d_raw,
@@ -227,6 +229,8 @@ def evaluate(net_g, net_q, net_d_raw, net_dh, dataloader, latent_dimensions, dev
             # fid.update(fakes, real=False)
             # kid.update(reals, real=True)
             # kid.update(fakes, real=False)
+            cat_ls.append(cat_neg_log_prob)
+            con_ls.append(con_neg_log_prob)
 
         # Process metrics
         metrics = {
@@ -237,6 +241,8 @@ def evaluate(net_g, net_q, net_d_raw, net_dh, dataloader, latent_dimensions, dev
             # "IS": is_.compute()[0].item(),
             # "FID": fid.compute().item(),
             # "KID": kid.compute()[0].item(),
+            "cat_neg_log_prob": torch.stack(cat_ls).mean().item(),
+            "con_neg_log_prob": torch.stack(con_ls).mean().item(),
         }
 
         # Create samples
