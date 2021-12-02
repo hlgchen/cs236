@@ -58,19 +58,16 @@ def direction_plots(model, output_path, dir, diameter_ls=[1.5, 3.5], n_row_img=5
     base_tensor = torch.randn(n_col_img, 128)
 
     for diameter in diameter_ls: 
-        output_path = f"{output_path}_diameter{diameter}"
+        output_path_file = f"{output_path}_diameter{diameter}"
         apply_direction(model=model, 
                         base_tensor=base_tensor, 
                         dir=dir,
-                        output_path=output_path, 
+                        output_path=output_path_file, 
                         diameter=diameter, 
                         n_row_img=n_row_img)
 
 
-if __name__ == "__main__": 
-
-    model = load_model("net_g")
-
+def generate_random_images(model): 
     # create random_plot
     dir = torch.randn(128)
     for seed in [17151426571300, 4582673360057174413, 15891558334906035504]: 
@@ -81,6 +78,7 @@ if __name__ == "__main__":
                         seed =seed, 
                         diameter_ls=[1.5, 3, 6])
 
+def generate_pca_images(model): 
     # create pca plots
     U = torch.load(f'out/pca/principal_directions_sample1000.pt')
     for i in [1, 4]: 
@@ -93,6 +91,7 @@ if __name__ == "__main__":
                             seed =seed, 
                             diameter_ls=[1.5, 3])
 
+def generate_reconstruction_images(model): 
     # create rec plots
     A = torch.load(f'out/rec/resnet_a10_s1500.pt')["A"]["A.a_v"].transpose(0,1)
     for i in range(10):
@@ -104,4 +103,16 @@ if __name__ == "__main__":
                             dir=dir,
                             seed =seed, 
                             diameter_ls=[6])
+
+
+if __name__ == "__main__": 
+
+    model = load_model("net_g")
+
+    # generate_random_images(model)
+    generate_pca_images(model)
+    generate_reconstruction_images(model)
+
+
+
 
