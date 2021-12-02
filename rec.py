@@ -24,7 +24,7 @@ def sample_z(batch_size):
 def sample_direction(batch_size, num_dir=10): 
     return torch.randint(0, num_dir, (batch_size,), device=device)
 
-def sample_magnitude(batch_size, magnitude_range=6): 
+def sample_magnitude(batch_size, magnitude_range=3): 
     return (torch.rand(batch_size, device=device) * 2 - 1) * magnitude_range
 
 def get_labels(batch_size, num_dir=10): 
@@ -55,17 +55,17 @@ def train_model(model_name, num_dir=10,  cont=None, start=0):
     start_time = time.time()
     z_dim = 128
     batch_size=64
-    gen = load_model('net_g')
+    gen = load_model('net_g').to(device)
     
 
     if model_name == "lenet": 
-        clf = Reconstructor(dim=num_dir)
+        clf = Reconstructor(dim=num_dir).to(device)
     elif model_name == "resnet": 
-        clf = Reconstructor2(dim = num_dir)
+        clf = Reconstructor2(dim = num_dir).to(device)
     else: 
-        clf = Reconstructor3(load_model('net_d'), dim=num_dir)
+        clf = Reconstructor3(load_model('net_d'), dim=num_dir).to(device)
 
-    A = ANorm(z_dim, num_dir)
+    A = ANorm(z_dim, num_dir).to(device)
 
     params = [
         {'params': clf.parameters()},
@@ -105,5 +105,6 @@ def train_model(model_name, num_dir=10,  cont=None, start=0):
 
 
 if __name__ == "__main__": 
-    cont = "resnet_a10_s1500.pt"
-    train_model("resnet", cont=cont)
+    # cont = "resnet_a10_s1500.pt"
+    cont=None
+    train_model("lenet", cont=cont)
